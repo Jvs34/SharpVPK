@@ -7,20 +7,23 @@ namespace SharpVPK.Test
 	{
 		static void Main( string [] args )
 		{
-			var archive = new VpkArchive();
 
+			using( var testVpkArchive = new VpkArchive() )
 			using( var fileStream = File.OpenRead( @"E:\Games\Steam\steamapps\common\dota 2 beta\game\dota\pak01_dir.vpk" ) )
 			{
-				archive.Load( fileStream , VpkVersions.Versions.V2 );
+				testVpkArchive.Load( fileStream , VpkVersions.Versions.V2 );
+
+				//foreach(var dir in testVpkArchive.Directories)
+				//    foreach(var entry in dir.Entries)
+				//        if (entry.HasPreloadData)
+				//        {
+
+				//        }
+
 			}
 
 
-			//foreach(var dir in archive.Directories)
-			//    foreach(var entry in dir.Entries)
-			//        if (entry.HasPreloadData)
-			//        {
 
-			//        }
 			Console.WriteLine( "Done" );
 			Console.ReadLine();
 		}

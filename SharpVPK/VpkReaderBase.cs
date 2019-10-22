@@ -8,25 +8,22 @@ namespace SharpVPK
 {
 	internal abstract class VpkReaderBase
 	{
-		public BinaryReader Reader;
-		private readonly StringBuilder _strBuilder;
+		public BinaryReader Reader { get; protected set; }
+		private readonly StringBuilder _strBuilder = new StringBuilder( 256 );
 
 		protected VpkReaderBase( string filename )
 		{
 			Reader = new BinaryReader( new FileStream( filename , FileMode.Open , FileAccess.Read ) );
-			_strBuilder = new StringBuilder( 256 );
 		}
 
 		protected VpkReaderBase( byte [] file )
 		{
 			Reader = new BinaryReader( new MemoryStream( file ) );
-			_strBuilder = new StringBuilder( 256 );
 		}
 
 		protected VpkReaderBase( Stream stream )
 		{
 			Reader = new BinaryReader( stream );
-			_strBuilder = new StringBuilder( 256 );
 		}
 
 		public abstract IVpkArchiveHeader ReadArchiveHeader();
