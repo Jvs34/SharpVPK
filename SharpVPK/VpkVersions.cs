@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SharpVPK
+﻿namespace SharpVPK
 {
-    public class VpkVersions
-    {
-        public enum Versions
-        {
-            V1, V2
-        }
-    }
+	public class VpkVersions
+	{
+		public enum Versions
+		{
+			V1, V2
+		}
+	}
 }
