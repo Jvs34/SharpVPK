@@ -9,69 +9,51 @@ namespace SharpVPK
 {
 	public class VpkArchive : IDisposable
 	{
-		public List<VpkDirectory> Directories { get; set; }
+		public List<VpkDirectory> Directories { get; internal set; } = new List<VpkDirectory>();
 		public bool IsMultiPart { get; set; }
 		private VpkReaderBase _reader;
-		internal List<ArchivePart> Parts { get; set; }
-		internal string ArchivePath { get; set; }
+		internal Dictionary<int , ArchivePart> Parts { get; set; } = new Dictionary<int , ArchivePart>();
 
 		private bool _disposedValue; // To detect redundant calls
 
-
-		public VpkArchive()
-		{
-			Directories = new List<VpkDirectory>();
-		}
-
 		public void Load( string filename , VpkVersions.Versions version = VpkVersions.Versions.V1 )
 		{
-			ArchivePath = filename;
-			IsMultiPart = filename.EndsWith( "_dir.vpk" );
-			if( IsMultiPart )
-			{
-				LoadParts( filename );
-			}
+			Parts.Clear();
 
-			if( version == VpkVersions.Versions.V1 )
-			{
-				_reader = new VpkReaderV1( filename );
-			}
-			else if( version == VpkVersions.Versions.V2 )
-			{
-				_reader = new V2.VpkReaderV2( filename );
-			}
-
-			var hdr = _reader.ReadArchiveHeader();
-			if( !hdr.Verify() )
-			{
-				throw new ArchiveParsingException( "Invalid archive header" );
-			}
-
-			Directories.AddRange( _reader.ReadDirectories( this ) );
+			Load( new FileStream( filename , FileMode.Open , FileAccess.Read ) , filename , version , LoadFileParts( filename ) );
 		}
 
-		public void Load( byte [] bytes , VpkVersions.Versions version = VpkVersions.Versions.V1 )
+		public void Load( byte [] bytes , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , List<byte []> byteParts = null )
 		{
-			if( version == VpkVersions.Versions.V1 )
+			//create a new memorystream for each bytes archive
+			Dictionary<Stream , string> streamParts = null;
+
+			if( byteParts?.Count > 0 )
 			{
-				_reader = new VpkReaderV1( bytes );
-			}
-			else if( version == VpkVersions.Versions.V2 )
-			{
-				_reader = new V2.VpkReaderV2( bytes );
+				streamParts = new Dictionary<Stream , string>();
+
+				int index = 0;
+				foreach( byte [] archivePart in byteParts )
+				{
+					streamParts.Add( new MemoryStream( archivePart ) , $"stream_{index}.vpk" );
+					index++;
+				}
 			}
 
-			var hdr = _reader.ReadArchiveHeader();
-			if( !hdr.Verify() )
-			{
-				throw new ArchiveParsingException( "Invalid archive header" );
-			}
-
-			Directories.AddRange( _reader.ReadDirectories( this ) );
+			Load( new MemoryStream( bytes ) , filename , version , streamParts );
 		}
 
-		public void Load( Stream stream , VpkVersions.Versions version = VpkVersions.Versions.V1 )
+		public void Load( Stream stream , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , Dictionary<Stream , string> parts = null )
 		{
+			Parts.Clear();
+
+			if( string.IsNullOrEmpty( filename ) )
+			{
+				filename = "stream_dir.vpk";
+			}
+
+			AddMainPart( filename , stream );
+
 			if( version == VpkVersions.Versions.V1 )
 			{
 				_reader = new VpkReaderV1( stream );
@@ -87,12 +69,19 @@ namespace SharpVPK
 				throw new ArchiveParsingException( "Invalid archive header" );
 			}
 
+			//Jvs: moved this down here as we want the header error as soon as possible
+			if( parts?.Count > 0 )
+			{
+				LoadParts( parts );
+			}
+
 			Directories.AddRange( _reader.ReadDirectories( this ) );
 		}
 
-		private void LoadParts( string filename )
+		private Dictionary<Stream , string> LoadFileParts( string filename )
 		{
-			Parts = new List<ArchivePart>();
+			Dictionary<Stream , string> streamParts = new Dictionary<Stream , string>();
+
 			var fileBaseName = filename.Split( '_' ) [0];
 			foreach( var file in Directory.GetFiles( Path.GetDirectoryName( filename ) ) )
 			{
@@ -101,13 +90,35 @@ namespace SharpVPK
 					continue;
 				}
 
-				var fi = new FileInfo( file );
-				string [] spl = file.Split( '_' );
-				var partIdx = int.Parse( spl [spl.Length - 1].Split( '.' ) [0] );
-				Parts.Add( new ArchivePart( (uint) fi.Length , partIdx , file ) );
+				streamParts.Add( new FileStream( file , FileMode.Open , FileAccess.Read ) , file );
 			}
-			Parts.Add( new ArchivePart( (uint) new FileInfo( filename ).Length , -1 , filename ) );
-			Parts = Parts.OrderBy( p => p.Index ).ToList();
+
+			return streamParts;
+		}
+
+		private void LoadParts( Dictionary<Stream , string> streamParts )
+		{
+			foreach( var kv in streamParts )
+			{
+				string [] spl = kv.Value.Split( '_' );
+				var partIdx = int.Parse( spl [spl.Length - 1].Split( '.' ) [0] );
+				AddPart( kv.Value , kv.Key , partIdx );
+			}
+		}
+
+		private void AddMainPart( string filename , Stream stream = null )
+		{
+			if( stream is null )
+			{
+				FileInfo info = new FileInfo( filename );
+				stream = info.Open( FileMode.Open , FileAccess.Read );
+			}
+			AddPart( filename , stream , -1 );
+		}
+
+		private void AddPart( string filename , Stream stream , int index )
+		{
+			Parts.Add( index , new ArchivePart( index , filename , stream ) );
 		}
 
 		#region IDisposable Support
@@ -118,22 +129,18 @@ namespace SharpVPK
 			{
 				if( disposing )
 				{
-					// TODO: dispose managed state (managed objects).
+					foreach( var partkv in Parts )
+					{
+						partkv.Value.PartStream?.Dispose();
+					}
+					Parts.Clear();
 				}
-
 				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
 				// TODO: set large fields to null.
 
 				_disposedValue = true;
 			}
 		}
-
-		// TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
-		// ~VpkArchive()
-		// {
-		//   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-		//   Dispose(false);
-		// }
 
 		// This code added to correctly implement the disposable pattern.
 		public void Dispose()

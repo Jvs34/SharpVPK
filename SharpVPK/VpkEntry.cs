@@ -8,9 +8,8 @@ namespace SharpVPK
 		public string Extension { get; set; }
 		public string Path { get; set; }
 		public string Filename { get; set; }
-		public byte [] PreloadData { get { return ReadPreloadData(); } }
-		public byte [] Data { get { return ReadData(); } }
 		public bool HasPreloadData { get; set; }
+		public uint Length => EntryLength;
 
 		internal uint CRC;
 		internal ushort PreloadBytes;
@@ -41,56 +40,74 @@ namespace SharpVPK
 			return string.Concat( Path , "/" , Filename , "." , Extension );
 		}
 
-		private byte [] ReadPreloadData()
+		public byte [] ReadPreloadData()
 		{
-			if( PreloadBytes > 0 )
+			if( HasPreloadData )
 			{
 				var buff = new byte [PreloadBytes];
-				using( var fs = new FileStream( ParentArchive.ArchivePath , FileMode.Open , FileAccess.Read ) )
-				{
-					buff = new byte [PreloadBytes];
-					fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
-					fs.Read( buff , 0 , buff.Length );
-				}
+				var fs = ParentArchive.Parts [-1].PartStream;
+				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
+				fs.Read( buff , 0 , buff.Length );
 				return buff;
 			}
 			return null;
 		}
 
-		private byte [] ReadData()
+		public Stream ReadPreloadDataStream()
 		{
-			var partFile = ParentArchive.Parts.FirstOrDefault( part => part.Index == ArchiveIndex );
-			if( partFile == null )
-			{
-				return null;
-			}
-
+			Stream memStream = null;
 			if( HasPreloadData )
 			{
-				return ReadPreloadData();
-			}
+				var fs = ParentArchive.Parts [-1].PartStream;
+				memStream = new MemoryStream();
+				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
+				fs.CopyTo( memStream , PreloadBytes );
 
-			var buff = new byte [EntryLength];
-			using( var fs = new FileStream( partFile.Filename , FileMode.Open , FileAccess.Read ) )
-			{
-				fs.Seek( EntryOffset , SeekOrigin.Begin );
-				fs.Read( buff , 0 , buff.Length );
 			}
-			return buff;
+			return memStream;
 		}
 
-		public byte [] AnyData
+		public byte [] ReadData()
 		{
-			get
+			var partFile = ParentArchive.Parts [ArchiveIndex];
+			if( partFile != null && !HasPreloadData )
 			{
-				if( this.HasPreloadData )
-				{
-					return this.ReadPreloadData();
-				}
-				else
-				{
-					return this.ReadData();
-				}
+				var buff = new byte [EntryLength];
+				var fs = partFile.PartStream;
+				fs.Seek( EntryOffset , SeekOrigin.Begin );
+				fs.Read( buff , 0 , buff.Length );
+				return buff;
+			}
+			return null;
+		}
+
+		public Stream ReadDataStream()
+		{
+			Stream memStream = null;
+
+			var partFile = ParentArchive.Parts [ArchiveIndex];
+			if( partFile != null && !HasPreloadData )
+			{
+				var fs = partFile.PartStream;
+				memStream = new MemoryStream();
+				fs.Seek( EntryOffset , SeekOrigin.Begin );
+				fs.CopyTo( memStream , (int) EntryLength );
+			}
+
+			return memStream;
+		}
+
+		public byte [] ReadAnyData() => HasPreloadData ? ReadPreloadData() : ReadData();
+
+		public Stream ReadAnyDataStream()
+		{
+			if( HasPreloadData )
+			{
+				return ReadPreloadDataStream();
+			}
+			else
+			{
+				return ReadDataStream();
 			}
 		}
 
