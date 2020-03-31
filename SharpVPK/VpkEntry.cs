@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using SharpVPK.Extensions;
+using System.IO;
 using System.Linq;
 
 namespace SharpVPK
@@ -40,12 +41,12 @@ namespace SharpVPK
 			return string.Concat( Path , "/" , Filename , "." , Extension );
 		}
 
-		public byte [] ReadPreloadData()
+		public byte[] ReadPreloadData()
 		{
 			if( HasPreloadData )
 			{
-				var buff = new byte [PreloadBytes];
-				var fs = ParentArchive.Parts [-1].PartStream;
+				var buff = new byte[PreloadBytes];
+				var fs = ParentArchive.Parts[-1].PartStream;
 				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
 				fs.Read( buff , 0 , buff.Length );
 				return buff;
@@ -58,21 +59,21 @@ namespace SharpVPK
 			Stream memStream = null;
 			if( HasPreloadData )
 			{
-				var fs = ParentArchive.Parts [-1].PartStream;
+				var fs = ParentArchive.Parts[-1].PartStream;
 				memStream = new MemoryStream();
 				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
-				fs.CopyTo( memStream , PreloadBytes );
+				fs.CopyToLimited( memStream , PreloadBytes );
 
 			}
 			return memStream;
 		}
 
-		public byte [] ReadData()
+		public byte[] ReadData()
 		{
-			var partFile = ParentArchive.Parts [ArchiveIndex];
+			var partFile = ParentArchive.Parts[ArchiveIndex];
 			if( partFile != null && !HasPreloadData )
 			{
-				var buff = new byte [EntryLength];
+				var buff = new byte[EntryLength];
 				var fs = partFile.PartStream;
 				fs.Seek( EntryOffset , SeekOrigin.Begin );
 				fs.Read( buff , 0 , buff.Length );
@@ -85,19 +86,19 @@ namespace SharpVPK
 		{
 			Stream memStream = null;
 
-			var partFile = ParentArchive.Parts [ArchiveIndex];
+			var partFile = ParentArchive.Parts[ArchiveIndex];
 			if( partFile != null && !HasPreloadData )
 			{
 				var fs = partFile.PartStream;
 				memStream = new MemoryStream();
 				fs.Seek( EntryOffset , SeekOrigin.Begin );
-				fs.CopyTo( memStream , (int) EntryLength );
+				fs.CopyToLimited( memStream , ( int ) EntryLength );
 			}
 
 			return memStream;
 		}
 
-		public byte [] ReadAnyData() => HasPreloadData ? ReadPreloadData() : ReadData();
+		public byte[] ReadAnyData() => HasPreloadData ? ReadPreloadData() : ReadData();
 
 		public Stream ReadAnyDataStream()
 		{

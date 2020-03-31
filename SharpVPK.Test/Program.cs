@@ -5,7 +5,7 @@ namespace SharpVPK.Test
 {
 	class Program
 	{
-		static void Main( string [] args )
+		static void Main( string[] args )
 		{
 
 			using( var testVpkArchive = new VpkArchive() )
@@ -22,7 +22,7 @@ namespace SharpVPK.Test
 				{
 					foreach( var entry in dir.Entries )
 					{
-						Console.WriteLine( Path.Combine( entry.Path , Path.ChangeExtension( entry.Filename , entry.Extension ) ) );
+						//Console.WriteLine( Path.Combine( entry.Path , Path.ChangeExtension( entry.Filename , entry.Extension ) ) );
 						var stream = entry.ReadAnyDataStream();
 					}
 				}
