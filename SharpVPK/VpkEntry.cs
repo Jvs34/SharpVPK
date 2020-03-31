@@ -63,7 +63,7 @@ namespace SharpVPK
 				memStream = new MemoryStream();
 				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
 				fs.CopyToLimited( memStream , PreloadBytes );
-
+				memStream.Position = 0;
 			}
 			return memStream;
 		}
@@ -93,6 +93,7 @@ namespace SharpVPK
 				memStream = new MemoryStream();
 				fs.Seek( EntryOffset , SeekOrigin.Begin );
 				fs.CopyToLimited( memStream , ( int ) EntryLength );
+				memStream.Position = 0;
 			}
 
 			return memStream;

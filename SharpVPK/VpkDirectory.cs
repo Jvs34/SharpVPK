@@ -14,5 +14,10 @@ namespace SharpVPK
 			Path = path.ToLower();
 			Entries = entries;
 		}
+
+		public override string ToString()
+		{
+			return $"{Path} Entries: {Entries.Count}";
+		}
 	}
 }
