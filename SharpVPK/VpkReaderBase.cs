@@ -16,7 +16,7 @@ namespace SharpVPK
 			Reader = new BinaryReader( new FileStream( filename , FileMode.Open , FileAccess.Read ) );
 		}
 
-		protected VpkReaderBase( byte [] file )
+		protected VpkReaderBase( byte[] file )
 		{
 			Reader = new BinaryReader( new MemoryStream( file ) );
 		}
@@ -32,7 +32,7 @@ namespace SharpVPK
 		{
 			_strBuilder.Clear();
 			char chr;
-			while( ( chr = (char) Reader.ReadByte() ) != 0x0 )
+			while( ( chr = ( char ) Reader.ReadByte() ) != 0x0 )
 			{
 				_strBuilder.Append( chr );
 			}
@@ -40,12 +40,12 @@ namespace SharpVPK
 			return _strBuilder.ToString();
 		}
 
-		protected T BytesToStructure<T>( byte [] bytearray )
+		protected T BytesToStructure<T>( byte[] bytearray )
 		{
 			var structSize = Marshal.SizeOf( typeof( T ) );
 			var pStruct = Marshal.AllocHGlobal( structSize );
 			Marshal.Copy( bytearray , 0 , pStruct , structSize );
-			var @struct = (T) Marshal.PtrToStructure( pStruct , typeof( T ) );
+			var @struct = ( T ) Marshal.PtrToStructure( pStruct , typeof( T ) );
 			Marshal.FreeHGlobal( pStruct );
 
 			return @struct;
@@ -93,7 +93,7 @@ namespace SharpVPK
 				var entryLen = Reader.ReadUInt32();
 				// skip terminator
 				Reader.ReadUInt16();
-				var preloadDataOffset = (uint) Reader.BaseStream.Position;
+				var preloadDataOffset = ( uint ) Reader.BaseStream.Position;
 				if( preloadBytes > 0 )
 				{
 					Reader.BaseStream.Position += preloadBytes;

@@ -46,7 +46,7 @@ namespace SharpVPK
 			if( HasPreloadData )
 			{
 				var buff = new byte[PreloadBytes];
-				var fs = ParentArchive.Parts[-1].PartStream;
+				var fs = ParentArchive.Parts[VpkArchive.MainPartIndex].PartStream;
 				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
 				fs.Read( buff , 0 , buff.Length );
 				return buff;
@@ -56,16 +56,22 @@ namespace SharpVPK
 
 		public Stream ReadPreloadDataStream()
 		{
-			Stream memStream = null;
+			MemoryStream memStream = new MemoryStream();
+			CopyPreloadDataStreamTo( memStream );
+			memStream.Position = 0;
+			return memStream;
+		}
+
+		public bool CopyPreloadDataStreamTo( Stream outputStream )
+		{
 			if( HasPreloadData )
 			{
-				var fs = ParentArchive.Parts[-1].PartStream;
-				memStream = new MemoryStream();
+				var fs = ParentArchive.Parts[VpkArchive.MainPartIndex].PartStream;
 				fs.Seek( PreloadDataOffset , SeekOrigin.Begin );
-				fs.CopyToLimited( memStream , PreloadBytes );
-				memStream.Position = 0;
+				fs.CopyToLimited( outputStream , PreloadBytes );
+				return true;
 			}
-			return memStream;
+			return false;
 		}
 
 		public byte[] ReadData()
@@ -84,19 +90,24 @@ namespace SharpVPK
 
 		public Stream ReadDataStream()
 		{
-			Stream memStream = null;
+			MemoryStream memStream = new MemoryStream();
+			CopyDataStreamTo( memStream );
+			memStream.Position = 0;
+			return memStream;
+		}
 
+		public bool CopyDataStreamTo( Stream outputStream )
+		{
 			var partFile = ParentArchive.Parts[ArchiveIndex];
 			if( partFile != null && !HasPreloadData )
 			{
 				var fs = partFile.PartStream;
-				memStream = new MemoryStream();
 				fs.Seek( EntryOffset , SeekOrigin.Begin );
-				fs.CopyToLimited( memStream , ( int ) EntryLength );
-				memStream.Position = 0;
+				fs.CopyToLimited( outputStream , ( int ) EntryLength );
+				return true;
 			}
 
-			return memStream;
+			return false;
 		}
 
 		public byte[] ReadAnyData() => HasPreloadData ? ReadPreloadData() : ReadData();

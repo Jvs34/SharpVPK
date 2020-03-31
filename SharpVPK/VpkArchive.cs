@@ -13,8 +13,9 @@ namespace SharpVPK
 		public bool IsMultiPart { get; set; }
 		private VpkReaderBase _reader;
 		internal Dictionary<int , ArchivePart> Parts { get; set; } = new Dictionary<int , ArchivePart>();
-
 		private bool _disposedValue; // To detect redundant calls
+
+		public const int MainPartIndex = -1;
 
 		public void Load( string filename , VpkVersions.Versions version = VpkVersions.Versions.V1 )
 		{
@@ -23,7 +24,7 @@ namespace SharpVPK
 			Load( new FileStream( filename , FileMode.Open , FileAccess.Read ) , filename , version , LoadFileParts( filename ) );
 		}
 
-		public void Load( byte [] bytes , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , List<byte []> byteParts = null )
+		public void Load( byte[] bytes , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , List<byte[]> byteParts = null )
 		{
 			//create a new memorystream for each bytes archive
 			Dictionary<Stream , string> streamParts = null;
@@ -33,7 +34,7 @@ namespace SharpVPK
 				streamParts = new Dictionary<Stream , string>();
 
 				int index = 0;
-				foreach( byte [] archivePart in byteParts )
+				foreach( byte[] archivePart in byteParts )
 				{
 					streamParts.Add( new MemoryStream( archivePart ) , $"stream_{index}.vpk" );
 					index++;
@@ -82,10 +83,10 @@ namespace SharpVPK
 		{
 			Dictionary<Stream , string> streamParts = new Dictionary<Stream , string>();
 
-			var fileBaseName = filename.Split( '_' ) [0];
+			var fileBaseName = filename.Split( '_' )[0];
 			foreach( var file in Directory.GetFiles( Path.GetDirectoryName( filename ) ) )
 			{
-				if( file.Split( '_' ) [0] != fileBaseName || file == filename )
+				if( file.Split( '_' )[0] != fileBaseName || file == filename )
 				{
 					continue;
 				}
@@ -100,8 +101,8 @@ namespace SharpVPK
 		{
 			foreach( var kv in streamParts )
 			{
-				string [] spl = kv.Value.Split( '_' );
-				var partIdx = int.Parse( spl [spl.Length - 1].Split( '.' ) [0] );
+				string[] spl = kv.Value.Split( '_' );
+				var partIdx = int.Parse( spl[spl.Length - 1].Split( '.' )[0] );
 				AddPart( kv.Value , kv.Key , partIdx );
 			}
 		}
@@ -113,7 +114,7 @@ namespace SharpVPK
 				FileInfo info = new FileInfo( filename );
 				stream = info.Open( FileMode.Open , FileAccess.Read );
 			}
-			AddPart( filename , stream , -1 );
+			AddPart( filename , stream , MainPartIndex );
 		}
 
 		private void AddPart( string filename , Stream stream , int index )

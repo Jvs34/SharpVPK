@@ -10,12 +10,12 @@ namespace SharpVPK.V2
 		{
 		}
 
-		public VpkReaderV2( byte [] file )
+		public VpkReaderV2( byte[] file )
 			: base( file )
 		{
 		}
 
-		public VpkReaderV2( Stream stream ) 
+		public VpkReaderV2( Stream stream )
 			: base( stream )
 		{
 
@@ -28,7 +28,7 @@ namespace SharpVPK.V2
 			// skip unknown values
 			Reader.ReadInt32();
 			var hdr = BytesToStructure<VpkArchiveHeaderV2>( hdrBuff );
-			hdr.FooterLength = (uint) Reader.ReadInt32();
+			hdr.FooterLength = ( uint ) Reader.ReadInt32();
 			Reader.ReadInt32();
 			return hdr;
 		}
