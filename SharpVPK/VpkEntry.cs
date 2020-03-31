@@ -58,7 +58,7 @@ namespace SharpVPK
 		{
 			MemoryStream memStream = new MemoryStream();
 			CopyPreloadDataStreamTo( memStream );
-			memStream.Position = 0;
+			memStream.Seek( 0 , SeekOrigin.Begin );
 			return memStream;
 		}
 
@@ -92,7 +92,7 @@ namespace SharpVPK
 		{
 			MemoryStream memStream = new MemoryStream();
 			CopyDataStreamTo( memStream );
-			memStream.Position = 0;
+			memStream.Seek( 0 , SeekOrigin.Begin );
 			return memStream;
 		}
 

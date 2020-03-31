@@ -7,10 +7,10 @@ using System.Linq;
 
 namespace SharpVPK
 {
-	public class VpkArchive : IDisposable
+	public sealed class VpkArchive : IDisposable
 	{
 		public List<VpkDirectory> Directories { get; internal set; } = new List<VpkDirectory>();
-		public bool IsMultiPart { get; set; }
+		public bool IsMultiPart => Parts.Count > 1;
 		private VpkReaderBase _reader;
 		internal Dictionary<int , ArchivePart> Parts { get; set; } = new Dictionary<int , ArchivePart>();
 		private bool _disposedValue; // To detect redundant calls
@@ -46,6 +46,7 @@ namespace SharpVPK
 
 		public void Load( Stream stream , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , Dictionary<Stream , string> parts = null )
 		{
+			Directories.Clear();
 			Parts.Clear();
 
 			if( string.IsNullOrEmpty( filename ) )
@@ -124,7 +125,7 @@ namespace SharpVPK
 
 		#region IDisposable Support
 
-		protected virtual void Dispose( bool disposing )
+		private void Dispose( bool disposing )
 		{
 			if( !_disposedValue )
 			{
