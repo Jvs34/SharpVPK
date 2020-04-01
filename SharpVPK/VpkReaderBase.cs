@@ -16,11 +16,6 @@ namespace SharpVPK
 			Reader = new BinaryReader( new FileStream( filename , FileMode.Open , FileAccess.Read ) );
 		}
 
-		protected VpkReaderBase( byte[] file )
-		{
-			Reader = new BinaryReader( new MemoryStream( file ) );
-		}
-
 		protected VpkReaderBase( Stream stream )
 		{
 			Reader = new BinaryReader( stream );

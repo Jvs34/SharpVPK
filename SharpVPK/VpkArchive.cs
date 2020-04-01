@@ -1,5 +1,6 @@
 ﻿using SharpVPK.Exceptions;
 using SharpVPK.V1;
+using SharpVPK.V2;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,75 +10,98 @@ namespace SharpVPK
 {
 	public sealed class VpkArchive : IDisposable
 	{
-		public List<VpkDirectory> Directories { get; internal set; } = new List<VpkDirectory>();
+		public bool Loaded { get; private set; }
 		public bool IsMultiPart => Parts.Count > 1;
-		private VpkReaderBase _reader;
-		internal Dictionary<int , ArchivePart> Parts { get; set; } = new Dictionary<int , ArchivePart>();
-		private bool _disposedValue; // To detect redundant calls
+		public IReadOnlyList<VpkDirectory> Directories => InternalDirectories.AsReadOnly();
+		private VpkReaderBase Reader { get; set; }
+		private bool Disposed { get; set; } // To detect redundant calls
+		internal List<VpkDirectory> InternalDirectories { get; } = new List<VpkDirectory>();
+		internal Dictionary<int , ArchivePart> Parts { get; } = new Dictionary<int , ArchivePart>();
+		internal ArchivePart MainPart => Parts[MainPartIndex];
 
-		public const int MainPartIndex = -1;
+		internal const int MainPartIndex = -1;
 
+		/// <summary>
+		/// Loads the specified vpk archive by filename, if it's a _dir.vpk file it'll load related numbered vpks automatically
+		/// </summary>
+		/// <param name="filename">A vpk archive ending in _dir.vpk</param>
+		/// <param name="version"></param>
 		public void Load( string filename , VpkVersions.Versions version = VpkVersions.Versions.V1 )
 		{
-			Parts.Clear();
-
 			Load( new FileStream( filename , FileMode.Open , FileAccess.Read ) , filename , version , LoadFileParts( filename ) );
 		}
 
-		public void Load( byte[] bytes , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , List<byte[]> byteParts = null )
+		/// <summary>
+		/// Loads a vpk archive by stream, the related parts need to be ordered correctly in the list
+		/// </summary>
+		/// <param name="mainPartStream"></param>
+		/// <param name="parts"></param>
+		/// <param name="filename"></param>
+		/// <param name="version"></param>
+		public void Load( Stream mainPartStream , List<Stream> parts , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 )
 		{
-			//create a new memorystream for each bytes archive
 			Dictionary<Stream , string> streamParts = null;
 
-			if( byteParts?.Count > 0 )
+			if( parts?.Count > 0 )
 			{
 				streamParts = new Dictionary<Stream , string>();
 
 				int index = 0;
-				foreach( byte[] archivePart in byteParts )
+				foreach( var streamPart in parts )
 				{
-					streamParts.Add( new MemoryStream( archivePart ) , $"stream_{index}.vpk" );
+					streamParts.Add( streamPart , $"stream_{index}.vpk" );
 					index++;
 				}
 			}
 
-			Load( new MemoryStream( bytes ) , filename , version , streamParts );
+			Load( mainPartStream , filename , version , streamParts );
 		}
 
-		public void Load( Stream stream , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , Dictionary<Stream , string> parts = null )
+		/// <summary>
+		/// The main Load function, the related parts need to be numbered correctly as "archivename_01.vpk" and so forth
+		/// </summary>
+		/// <param name="mainPartStream"></param>
+		/// <param name="filename"></param>
+		/// <param name="version"></param>
+		/// <param name="parts"></param>
+		public void Load( Stream mainPartStream , string filename = "" , VpkVersions.Versions version = VpkVersions.Versions.V1 , Dictionary<Stream , string> parts = null )
 		{
-			Directories.Clear();
-			Parts.Clear();
+			if( Loaded )
+			{
+				throw new NotSupportedException( "Tried to call Load on a VpkArchive that is already loaded, dispose and create a new one instead" );
+			}
 
 			if( string.IsNullOrEmpty( filename ) )
 			{
 				filename = "stream_dir.vpk";
 			}
 
-			AddMainPart( filename , stream );
-
 			if( version == VpkVersions.Versions.V1 )
 			{
-				_reader = new VpkReaderV1( stream );
+				Reader = new VpkReaderV1( mainPartStream );
 			}
 			else if( version == VpkVersions.Versions.V2 )
 			{
-				_reader = new V2.VpkReaderV2( stream );
+				Reader = new VpkReaderV2( mainPartStream );
 			}
 
-			var hdr = _reader.ReadArchiveHeader();
+			var hdr = Reader.ReadArchiveHeader();
 			if( !hdr.Verify() )
 			{
 				throw new ArchiveParsingException( "Invalid archive header" );
 			}
 
-			//Jvs: moved this down here as we want the header error as soon as possible
+			//Jvs: moved these down here as we want the header error as soon as possible
+			AddMainPart( filename , mainPartStream );
+
 			if( parts?.Count > 0 )
 			{
 				LoadParts( parts );
 			}
 
-			Directories.AddRange( _reader.ReadDirectories( this ) );
+			InternalDirectories.AddRange( Reader.ReadDirectories( this ) );
+
+			Loaded = true;
 		}
 
 		private Dictionary<Stream , string> LoadFileParts( string filename )
@@ -127,7 +151,7 @@ namespace SharpVPK
 
 		private void Dispose( bool disposing )
 		{
-			if( !_disposedValue )
+			if( !Disposed )
 			{
 				if( disposing )
 				{
@@ -136,11 +160,12 @@ namespace SharpVPK
 						partkv.Value.PartStream?.Dispose();
 					}
 					Parts.Clear();
+					InternalDirectories.Clear();
 				}
 				// TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
 				// TODO: set large fields to null.
 
-				_disposedValue = true;
+				Disposed = true;
 			}
 		}
 

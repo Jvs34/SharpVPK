@@ -10,11 +10,6 @@ namespace SharpVPK.V2
 		{
 		}
 
-		public VpkReaderV2( byte[] file )
-			: base( file )
-		{
-		}
-
 		public VpkReaderV2( Stream stream )
 			: base( stream )
 		{
